@@ -1,5 +1,9 @@
 import requests
 import re
+import io
+import os
+import tempfile
+from PIL import Image
 from collections import namedtuple
 from bs4 import BeautifulSoup
 
@@ -102,17 +106,60 @@ def get_webtoon_id(day):
     return webtoon_id_list
 
 def webtoon_search(keyword):
-    search_url = requests.get(f'http://comic.naver.com/search.nhn?keyword={keyword}')
-    search_data = search_url.text
-    search_bs = BeautifulSoup(search_data, 'lxml')
-
-    searched_dict = {}
-    search_result = search_bs.find_all('ul', class_='resultList')
-    search_result_a = search_result[0].a.get('href')
-
-    search_id = re.search(r'Id=(\d*)', search_result_a)
-    searched_id = search_id.group(1)
-    searched_dict['Id'] = searched_id
-    searched_dict['Title'] = search_result[0].a.text
+    page_no = 1
+    dict_list = []
     
-    return searched_dict
+    while True:
+        search_info = {'type': 'title', 'm': 'webtoon', 'keyword': keyword, 'page': page_no}
+        search_url = requests.get(f'http://comic.naver.com/search.nhn?', params=search_info)
+        search_data = search_url.text
+        search_bs = BeautifulSoup(search_data, 'lxml')
+
+        search_result = search_bs.find_all('ul', class_='resultList')
+        search_result_h5 = search_result[0].find_all('h5')
+        dummy_list = []
+
+        for i in search_result_h5:
+            searched_dict = {}
+            search_result_a = i.a.get('href')
+            search_id = re.search(r'Id=(\d*)', search_result_a)
+            searched_id = search_id.group(1)
+            searched_dict['Id'] = searched_id
+            searched_dict['Title'] = i.a.text
+            dummy_list.append(searched_dict)
+
+        dict_list.extend(dummy_list)
+        
+        if dummy_list == []:
+            break
+
+        page_no += 1
+    
+    return dict_list
+
+def get_contents(webtoon_id, No):
+
+    content_list = []
+    content_info = {'titleId': webtoon_id, 'no': No}
+    url = requests.get('http://comic.naver.com/webtoon/detail.nhn?', params=content_info)
+    content_data = url.text
+    content_bs = BeautifulSoup(content_data, 'lxml')
+    content_data_div = content_bs.find_all('div', class_='wt_viewer')
+    content_img = content_data_div[0].find_all('img')
+    for i in content_img:
+        content_list.append(i.get('src'))
+    count = 1
+
+    user_agent = {'User-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.113 Safari/537.36'}
+    for i in content_list:
+        img = requests.get(i, headers=user_agent)
+        f = open('image.jpg', 'wb')
+        f.write(img.content)
+        f.close()
+        
+
+        
+    print(content_list)
+
+
+

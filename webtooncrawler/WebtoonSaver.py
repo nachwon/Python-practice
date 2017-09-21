@@ -1,6 +1,10 @@
 from WebtoonCrawler import NaverWebtoonCrawler
 from utils import *
 
+class BreakIt(Exception):
+    def __str__(self):
+        return 'Session Terminated by user'
+
 print('==================================')
 print('=      Naver_Webtoon_Crawler     =')
 print('==================================')
@@ -16,30 +20,52 @@ while True:
         day = input('which day? >>> ')
         print("")
         webtoon_list = get_webtoon_id(day)
+        list_index = 0
         for i in webtoon_list:
-            print(f'웹툰 번호: {i.Id}, 웹툰 제목: {i.Title}')
+            print(f'{list_index}. ID : {i.Id}, Title : {i.Title}')
+            list_index += 1
         print("")
-        continue
+
+        select_id = input('Select from list >>> ')
+        print('')
+        webtoon_id = webtoon_list[int(select_id)].Id
+        break
 
     elif webtoon_id == 'search':
+
         search_keyword = input('search >>> ')
-        result_dict = webtoon_search(search_keyword)
-        print(f"ID : {result_dict['Id']} Title : {result_dict['Title']}")
         print('')
-        continue
+        result_dict = webtoon_search(search_keyword)
+        list_number = 0
+
+        for i in result_dict:
+            print(f"{list_number}. ID : {i['Id']} Title : {i['Title']}")
+            list_number += 1
+        print('')
+        
+        if result_dict == []:
+            print('No result', '\n')
+            continue
+        elif result_dict != []:
+            select_id = input('Select from list >>> ')
+            print('')
+            webtoon_id = result_dict[int(select_id)]['Id']
+            break
 
     elif webtoon_id == 'q':
-        break
+        raise BreakIt
         
+try:
+    webtoon_id = int(webtoon_id)
+    collected_webtoon = NaverWebtoonCrawler(webtoon_id)
+    info_dic = get_webtoon_info(webtoon_id)
+    print(f'제목: {info_dic["Webtoon_title"]}   작가: {info_dic["Author"]}')
 
-    try:
-        webtoon_id = int(webtoon_id)
-        collected_webtoon = NaverWebtoonCrawler(webtoon_id)
-        info_dic = get_webtoon_info(webtoon_id)
-        print(f'제목: {info_dic["Webtoon_title"]}   작가: {info_dic["Author"]}')
-        break
-    except ValueError:
-        print('type only 6 digit numbers', '\n')
+except ValueError:
+    print('type only 6 digit numbers', '\n')
+except BreakIt as e:
+    print(e)
+    
     
     
 
@@ -114,6 +140,7 @@ while True:
         collected_webtoon.load(loadname)
 
     elif selection == 'q':
+        print('Session Terminated by user')
         break
     else:
         print('wrong input')
